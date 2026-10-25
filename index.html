@@ -94,6 +94,7 @@
       overflow: hidden;
       border: 1px solid #32758b;
       border-radius: 24px;
+
       background:
         radial-gradient(
           ellipse at 50% 38%,
@@ -101,6 +102,7 @@
           #10435d 48%,
           #06243b 100%
         );
+
       box-shadow: 0 25px 60px #0006;
       isolation: isolate;
     }
@@ -210,6 +212,8 @@
       font-size: 12px;
     }
 
+    /* Canvas для визуальных эффектов */
+
     .effects-canvas {
       position: absolute;
       inset: 0;
@@ -281,6 +285,7 @@
 </head>
 
 <body>
+
   <div class="page">
 
     <header>
@@ -294,6 +299,7 @@
     </header>
 
     <section class="intro">
+
       <div class="tag">
         ИНТЕРАКТИВНАЯ 3D-ВИЗУАЛИЗАЦИЯ
       </div>
@@ -308,6 +314,7 @@
         применяйте визуальные эффекты и
         используйте дополненную реальность.
       </p>
+
     </section>
 
     <section class="viewer-box" id="viewerBox">
@@ -326,6 +333,7 @@
         ar-modes="webxr scene-viewer quick-look"
         ar-scale="auto"
         ar-placement="floor"
+        scale="2 2 2"
         tone-mapping="neutral"
         exposure="1.32"
         shadow-intensity="1.14"
@@ -335,7 +343,10 @@
         min-field-of-view="15deg"
         max-field-of-view="60deg">
 
-        <button slot="ar-button" class="ar-btn" id="arBtn">
+        <button
+          slot="ar-button"
+          class="ar-btn"
+          id="arBtn">
           ◈ Посмотреть в AR
         </button>
 
@@ -434,6 +445,7 @@
     const pixelBtn = document.getElementById("pixelBtn");
     const glitchBtn = document.getElementById("glitchBtn");
     const animBtn = document.getElementById("animBtn");
+    const arBtn = document.getElementById("arBtn");
 
     const loading = document.getElementById("loading");
     const errorBox = document.getElementById("error");
@@ -441,24 +453,24 @@
     const initialOrbit = "-45.16deg 76.24deg 1162m";
     const initialFov = "30deg";
 
-    const NORMAL_SCALE = "1 1 1";
+    // Размер на сайте увеличен в 2 раза.
+    const NORMAL_SCALE = "2 2 2";
+
+    // Размер в AR уменьшен в 20 раз
+    // относительно исходной модели.
     const AR_SCALE = "0.05 0.05 0.05";
 
     let animationOn = false;
     let arPreparing = false;
 
-    // Масштаб акулы для AR
-
-    const arBtn = document.getElementById("arBtn");
+    // Уменьшение перед входом в AR
 
     arBtn.addEventListener("click", () => {
       arPreparing = true;
-
-      // Уменьшаем модель в 20 раз.
       model.scale = AR_SCALE;
-
-      // Сам AR запускается штатной кнопкой model-viewer.
     });
+
+    // Возвращаем размер после выхода из AR
 
     model.addEventListener("ar-status", (event) => {
       const status = event.detail.status;
@@ -476,7 +488,7 @@
       }
     });
 
-    // Вращение
+    // Вращение модели
 
     rotateBtn.addEventListener("click", () => {
       model.autoRotate = !model.autoRotate;
@@ -517,13 +529,15 @@
         model.cameraOrbit = initialOrbit;
         model.fieldOfView = initialFov;
         model.autoRotate = true;
+        model.scale = NORMAL_SCALE;
+
         model.jumpCameraToGoal();
 
         rotateBtn.textContent =
           "⏸ Остановить вращение";
       });
 
-    // Canvas для визуальных эффектов
+    // Canvas для эффектов
 
     const fxCanvas =
       document.getElementById("effectsCanvas");
@@ -582,10 +596,14 @@
       }
     }
 
+    // Переключение пикселизации
+
     pixelBtn.addEventListener("click", () => {
       pixelOn = !pixelOn;
       updateEffectButtons();
     });
+
+    // Переключение Glitch
 
     glitchBtn.addEventListener("click", () => {
       glitchOn = !glitchOn;
@@ -612,6 +630,8 @@
       }
     }
 
+    // Применение визуальных эффектов
+
     function renderEffects(image) {
       resizeEffects();
 
@@ -621,6 +641,9 @@
       fx.clearRect(0, 0, w, h);
 
       if (pixelOn) {
+        // Уменьшаем разрешение,
+        // затем увеличиваем без сглаживания.
+
         const block = 12;
 
         smallCanvas.width = Math.max(
@@ -673,6 +696,8 @@
           0
         );
 
+        // Горизонтальные смещения
+
         for (let i = 0; i < 7; i++) {
           const y = Math.floor(
             Math.random() * h
@@ -704,6 +729,8 @@
           }
         }
 
+        // Цифровая помеха
+
         if (frameNumber % 5 === 0) {
           fx.fillStyle = "#74faff20";
 
@@ -716,6 +743,8 @@
         }
       }
     }
+
+    // Захват кадров модели
 
     async function effectLoop(timestamp) {
       requestAnimationFrame(effectLoop);
@@ -777,6 +806,9 @@
       const animations =
         model.availableAnimations || [];
 
+      console.log("Модель успешно загружена");
+      console.log("Анимации:", animations);
+
       if (animations.length > 0) {
         model.animationName = animations[0];
         model.pause();
@@ -791,7 +823,7 @@
       }
     });
 
-    // Встроенная анимация
+    // Управление встроенной анимацией
 
     animBtn.addEventListener("click", () => {
       if (!model.availableAnimations?.length) {
