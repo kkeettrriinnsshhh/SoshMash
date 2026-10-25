@@ -6,8 +6,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SHARK — Подводный мир</title>
 
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./three-shim.js"
+    }
+  }
+  </script>
+
   <script type="module"
-    src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.4.0/model-viewer.min.js">
+    src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.1.0/dist/model-viewer-module.min.js">
+  </script>
+
+  <script type="module"
+    src="https://cdn.jsdelivr.net/npm/@google/model-viewer-effects@1.5.1/dist/model-viewer-effects.min.js">
   </script>
 
   <style>
@@ -19,14 +31,16 @@
       --muted: #a3c3d0;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0;
+      min-height: 100vh;
       color: var(--text);
       font-family: Arial, sans-serif;
       background: var(--bg);
-      min-height: 100vh;
     }
 
     .page {
@@ -45,9 +59,13 @@
     }
 
     .logo {
-      font-weight: 900;
       font-size: 23px;
+      font-weight: 900;
       letter-spacing: 5px;
+    }
+
+    .logo span {
+      color: var(--accent);
     }
 
     .tag {
@@ -69,7 +87,9 @@
       line-height: 1.05;
     }
 
-    h1 span { color: var(--accent); }
+    h1 span {
+      color: var(--accent);
+    }
 
     .intro p {
       max-width: 540px;
@@ -85,10 +105,12 @@
       border: 1px solid #32758b;
       border-radius: 24px;
       background:
-        radial-gradient(ellipse at 50% 38%,
+        radial-gradient(
+          ellipse at 50% 38%,
           #257b91 0%,
           #10435d 48%,
-          #06243b 100%);
+          #06243b 100%
+        );
       box-shadow: 0 25px 60px #0006;
     }
 
@@ -126,7 +148,9 @@
       white-space: nowrap;
     }
 
-    .ar-btn:hover { background: #13657b; }
+    .ar-btn:hover {
+      background: #13657b;
+    }
 
     .controls {
       display: flex;
@@ -144,10 +168,21 @@
       border-radius: 11px;
       cursor: pointer;
       font-size: 14px;
+      transition: background 0.2s;
     }
 
     .controls button:hover {
       background: #19536a;
+    }
+
+    .controls button.active {
+      background: #187c88;
+      border-color: var(--accent);
+    }
+
+    .controls button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .info {
@@ -199,6 +234,7 @@
       top: 55px;
       left: 20px;
       right: 20px;
+      z-index: 5;
       padding: 12px;
       border-radius: 10px;
       background: #752e36;
@@ -214,10 +250,21 @@
     }
 
     @media (max-width: 700px) {
-      .page { padding: 20px 12px; }
-      .viewer-box { height: 470px; }
-      .info { grid-template-columns: 1fr; }
-      .controls button { flex: 1 1 40%; }
+      .page {
+        padding: 20px 12px;
+      }
+
+      .viewer-box {
+        height: 470px;
+      }
+
+      .info {
+        grid-template-columns: 1fr;
+      }
+
+      .controls button {
+        flex: 1 1 40%;
+      }
     }
   </style>
 </head>
@@ -226,31 +273,37 @@
   <div class="page">
 
     <header>
-      <div class="logo">SHARK<span style="color:#66e2e1">.</span></div>
+      <div class="logo">SHARK<span>.</span></div>
       <div class="tag">3D EXPERIENCE</div>
     </header>
 
     <section class="intro">
-      <div class="tag">ИНТЕРАКТИВНАЯ 3D-ВИЗУАЛИЗАЦИЯ</div>
+      <div class="tag">
+        ИНТЕРАКТИВНАЯ 3D-ВИЗУАЛИЗАЦИЯ
+      </div>
+
       <h1>Глубже <span>океана</span></h1>
+
       <p>
         Познакомьтесь с трёхмерной моделью акулы.
-        Вращайте её, изучайте с разных сторон и
+        Вращайте её, изучайте с разных сторон,
+        применяйте визуальные эффекты и
         используйте дополненную реальность.
       </p>
     </section>
 
     <section class="viewer-box">
-      <div class="viewer-label">● 3D MODEL / SHARK</div>
+
+      <div class="viewer-label">
+        ● 3D MODEL / SHARK
+      </div>
 
       <model-viewer
         id="shark"
         src="./Shark.glb"
         alt="Интерактивная трёхмерная модель акулы"
-        poster="./poster.webp"
         camera-controls
         auto-rotate
-        autoplay
         ar
         ar-modes="webxr scene-viewer quick-look"
         tone-mapping="neutral"
@@ -261,6 +314,24 @@
         field-of-view="30deg"
         min-field-of-view="15deg"
         max-field-of-view="60deg">
+
+        <!-- Лабораторная работа №6: эффекты -->
+        <effect-composer id="effects" render-mode="quality">
+
+          <pixelate-effect
+            id="pixelEffect"
+            granularity="7"
+            blend-mode="skip">
+          </pixelate-effect>
+
+          <glitch-effect
+            id="glitchEffect"
+            strength="0.25"
+            mode="sporadic"
+            blend-mode="skip">
+          </glitch-effect>
+
+        </effect-composer>
 
         <div class="progress" slot="progress-bar">
           <div class="bar" id="bar"></div>
@@ -276,29 +347,58 @@
         Не удалось загрузить модель Shark.glb.
         Проверьте имя и расположение файла.
       </div>
+
     </section>
 
+    <!-- Управление моделью -->
     <div class="controls">
-      <button id="rotateBtn">⏸ Остановить вращение</button>
-      <button id="zoomIn">＋ Приблизить</button>
-      <button id="zoomOut">－ Отдалить</button>
-      <button id="resetBtn">↺ Сбросить вид</button>
+
+      <button id="rotateBtn">
+        ⏸ Остановить вращение
+      </button>
+
+      <button id="zoomIn">
+        ＋ Приблизить
+      </button>
+
+      <button id="zoomOut">
+        － Отдалить
+      </button>
+
+      <button id="resetBtn">
+        ↺ Сбросить вид
+      </button>
+
+      <button id="pixelBtn">
+        ▦ Пикселизация: выкл.
+      </button>
+
+      <button id="glitchBtn">
+        ⚡ Glitch: выкл.
+      </button>
+
+      <button id="animBtn" disabled>
+        Проверка анимации...
+      </button>
+
     </div>
 
     <section class="info">
+
       <div class="info-card">
-        <strong>01 / Вращение</strong>
+        <strong>01 / Управление</strong>
         <p>
-          Зажмите левую кнопку мыши и перемещайте
-          курсор, чтобы рассмотреть модель.
+          Вращайте модель мышью, приближайте,
+          отдаляйте и возвращайте исходный вид.
         </p>
       </div>
 
       <div class="info-card">
-        <strong>02 / Масштабирование</strong>
+        <strong>02 / Визуальные эффекты</strong>
         <p>
-          Используйте колесо мыши или кнопки
-          управления для изменения масштаба.
+          Включайте пикселизацию и цифровые
+          искажения Glitch для изменения
+          изображения в реальном времени.
         </p>
       </div>
 
@@ -306,33 +406,51 @@
         <strong>03 / Дополненная реальность</strong>
         <p>
           На совместимом смартфоне можно
-          разместить 3D-модель в пространстве.
+          разместить модель акулы
+          в окружающем пространстве.
         </p>
       </div>
+
     </section>
 
     <footer>
-      Лабораторная работа №5 • Интерактивная 3D-модель
+      Лабораторная работа №6 •
+      Анимация и визуальные эффекты 3D-модели
     </footer>
+
   </div>
 
   <script>
     const model = document.getElementById("shark");
     const rotateBtn = document.getElementById("rotateBtn");
+    const pixelBtn = document.getElementById("pixelBtn");
+    const glitchBtn = document.getElementById("glitchBtn");
+    const animBtn = document.getElementById("animBtn");
+
+    const pixelEffect = document.getElementById("pixelEffect");
+    const glitchEffect = document.getElementById("glitchEffect");
     const bar = document.getElementById("bar");
 
     const initialOrbit = "-45.16deg 76.24deg 1162m";
     const initialFov = "30deg";
 
+    let pixelOn = false;
+    let glitchOn = false;
+    let animationOn = false;
+
+    // Автоматическое вращение
     rotateBtn.addEventListener("click", () => {
       model.autoRotate = !model.autoRotate;
+
       rotateBtn.textContent = model.autoRotate
         ? "⏸ Остановить вращение"
         : "▶ Включить вращение";
     });
 
+    // Приближение и отдаление
     function zoom(factor) {
       const orbit = model.getCameraOrbit();
+
       const newRadius = Math.max(
         0.01,
         orbit.radius * factor
@@ -348,23 +466,102 @@
     document.getElementById("zoomOut")
       .addEventListener("click", () => zoom(1.25));
 
+    // Сброс камеры
     document.getElementById("resetBtn")
       .addEventListener("click", () => {
         model.cameraOrbit = initialOrbit;
         model.fieldOfView = initialFov;
         model.autoRotate = true;
         model.jumpCameraToGoal();
-        rotateBtn.textContent = "⏸ Остановить вращение";
+
+        rotateBtn.textContent =
+          "⏸ Остановить вращение";
       });
 
+    // Пикселизация
+    pixelBtn.addEventListener("click", () => {
+      pixelOn = !pixelOn;
+
+      pixelEffect.setAttribute(
+        "blend-mode",
+        pixelOn ? "default" : "skip"
+      );
+
+      pixelBtn.textContent = pixelOn
+        ? "▦ Пикселизация: вкл."
+        : "▦ Пикселизация: выкл.";
+
+      pixelBtn.classList.toggle("active", pixelOn);
+    });
+
+    // Эффект Glitch
+    glitchBtn.addEventListener("click", () => {
+      glitchOn = !glitchOn;
+
+      glitchEffect.setAttribute(
+        "blend-mode",
+        glitchOn ? "default" : "skip"
+      );
+
+      glitchBtn.textContent = glitchOn
+        ? "⚡ Glitch: вкл."
+        : "⚡ Glitch: выкл.";
+
+      glitchBtn.classList.toggle("active", glitchOn);
+    });
+
+    // Проверка встроенных анимаций GLB
+    model.addEventListener("load", () => {
+      const animations = model.availableAnimations || [];
+
+      if (animations.length > 0) {
+        model.animationName = animations[0];
+        model.pause();
+
+        animBtn.disabled = false;
+        animBtn.textContent = "▶ Запустить анимацию";
+      } else {
+        animBtn.disabled = true;
+        animBtn.textContent = "Анимация отсутствует";
+      }
+
+      console.log("Модель загружена");
+      console.log("Доступные анимации:", animations);
+    });
+
+    // Воспроизведение анимации
+    animBtn.addEventListener("click", () => {
+      if (!model.availableAnimations?.length) return;
+
+      animationOn = !animationOn;
+
+      if (animationOn) {
+        model.play();
+      } else {
+        model.pause();
+      }
+
+      animBtn.textContent = animationOn
+        ? "⏸ Остановить анимацию"
+        : "▶ Запустить анимацию";
+
+      animBtn.classList.toggle("active", animationOn);
+    });
+
+    // Индикатор загрузки
     model.addEventListener("progress", event => {
       bar.style.width =
         Math.round(event.detail.totalProgress * 100) + "%";
     });
 
-    model.addEventListener("error", () => {
-      document.getElementById("error").style.display = "block";
+    // Обработка ошибок
+    model.addEventListener("error", event => {
+      console.error("Ошибка модели:", event.detail);
+
+      document.getElementById("error")
+        .style.display = "block";
     });
   </script>
+
 </body>
 </html>
