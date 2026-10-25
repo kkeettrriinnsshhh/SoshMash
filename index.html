@@ -210,8 +210,6 @@
       font-size: 12px;
     }
 
-    /* Canvas для обработки изображения */
-
     .effects-canvas {
       position: absolute;
       inset: 0;
@@ -283,7 +281,6 @@
 </head>
 
 <body>
-
   <div class="page">
 
     <header>
@@ -326,9 +323,9 @@
         camera-controls
         auto-rotate
         ar
-        ar-modes="scene-viewer webxr quick-look"
-ar-scale="fixed"
-ar-placement="floor"
+        ar-modes="webxr scene-viewer quick-look"
+        ar-scale="fixed"
+        ar-placement="floor"
         tone-mapping="neutral"
         exposure="1.32"
         shadow-intensity="1.14"
@@ -338,7 +335,7 @@ ar-placement="floor"
         min-field-of-view="15deg"
         max-field-of-view="60deg">
 
-        <button slot="ar-button" class="ar-btn">
+        <button slot="ar-button" class="ar-btn" id="arBtn">
           ◈ Посмотреть в AR
         </button>
 
@@ -444,7 +441,40 @@ ar-placement="floor"
     const initialOrbit = "-45.16deg 76.24deg 1162m";
     const initialFov = "30deg";
 
+    const NORMAL_SCALE = "1 1 1";
+    const AR_SCALE = "0.05 0.05 0.05";
+
     let animationOn = false;
+    let arPreparing = false;
+
+    // Масштаб акулы для AR
+
+    const arBtn = document.getElementById("arBtn");
+
+    arBtn.addEventListener("click", () => {
+      arPreparing = true;
+
+      // Уменьшаем модель в 20 раз.
+      model.scale = AR_SCALE;
+
+      // Сам AR запускается штатной кнопкой model-viewer.
+    });
+
+    model.addEventListener("ar-status", (event) => {
+      const status = event.detail.status;
+
+      if (status === "session-started") {
+        model.scale = AR_SCALE;
+      }
+
+      if (
+        status === "not-presenting" &&
+        arPreparing
+      ) {
+        arPreparing = false;
+        model.scale = NORMAL_SCALE;
+      }
+    });
 
     // Вращение
 
@@ -456,7 +486,7 @@ ar-placement="floor"
         : "▶ Включить вращение";
     });
 
-    // Масштабирование
+    // Масштабирование камеры
 
     function zoom(factor) {
       const orbit = model.getCameraOrbit();
@@ -493,19 +523,23 @@ ar-placement="floor"
           "⏸ Остановить вращение";
       });
 
-    // Canvas для эффектов
+    // Canvas для визуальных эффектов
 
     const fxCanvas =
       document.getElementById("effectsCanvas");
 
-    const fx = fxCanvas.getContext("2d", {
-      alpha: true
-    });
+    const fx = fxCanvas.getContext("2d");
 
     const smallCanvas =
       document.createElement("canvas");
 
     const small = smallCanvas.getContext("2d");
+
+    const snapshotCanvas =
+      document.createElement("canvas");
+
+    const snapshotContext =
+      snapshotCanvas.getContext("2d");
 
     let pixelOn = false;
     let glitchOn = false;
@@ -548,14 +582,10 @@ ar-placement="floor"
       }
     }
 
-    // Переключение пикселизации
-
     pixelBtn.addEventListener("click", () => {
       pixelOn = !pixelOn;
       updateEffectButtons();
     });
-
-    // Переключение Glitch
 
     glitchBtn.addEventListener("click", () => {
       glitchOn = !glitchOn;
@@ -582,8 +612,6 @@ ar-placement="floor"
       }
     }
 
-    // Обработка изображения
-
     function renderEffects(image) {
       resizeEffects();
 
@@ -591,12 +619,8 @@ ar-placement="floor"
       const h = fxCanvas.height;
 
       fx.clearRect(0, 0, w, h);
-      fx.imageSmoothingEnabled = true;
 
       if (pixelOn) {
-        // Уменьшаем изображение,
-        // затем увеличиваем без сглаживания.
-
         const block = 12;
 
         smallCanvas.width = Math.max(
@@ -633,28 +657,23 @@ ar-placement="floor"
           w,
           h
         );
+
+        fx.imageSmoothingEnabled = true;
       } else {
         fx.drawImage(image, 0, 0, w, h);
       }
 
       if (glitchOn) {
-        // Копируем текущий кадр.
+        snapshotCanvas.width = w;
+        snapshotCanvas.height = h;
 
-        const snapshot =
-          document.createElement("canvas");
+        snapshotContext.drawImage(
+          fxCanvas,
+          0,
+          0
+        );
 
-        snapshot.width = w;
-        snapshot.height = h;
-
-        snapshot
-          .getContext("2d")
-          .drawImage(fxCanvas, 0, 0);
-
-        // Сдвигаем случайные горизонтальные полосы.
-
-        const stripes = 7;
-
-        for (let i = 0; i < stripes; i++) {
+        for (let i = 0; i < 7; i++) {
           const y = Math.floor(
             Math.random() * h
           );
@@ -671,7 +690,7 @@ ar-placement="floor"
           fx.clearRect(0, y, w, sh);
 
           fx.drawImage(
-            snapshot,
+            snapshotCanvas,
             0, y, w, sh,
             shift, y, w, sh
           );
@@ -697,8 +716,6 @@ ar-placement="floor"
         }
       }
     }
-
-    // Получение кадров модели
 
     async function effectLoop(timestamp) {
       requestAnimationFrame(effectLoop);
@@ -760,15 +777,6 @@ ar-placement="floor"
       const animations =
         model.availableAnimations || [];
 
-      console.log(
-        "Модель успешно загружена"
-      );
-
-      console.log(
-        "Анимации:",
-        animations
-      );
-
       if (animations.length > 0) {
         model.animationName = animations[0];
         model.pause();
@@ -783,7 +791,7 @@ ar-placement="floor"
       }
     });
 
-    // Управление встроенной анимацией
+    // Встроенная анимация
 
     animBtn.addEventListener("click", () => {
       if (!model.availableAnimations?.length) {
@@ -808,7 +816,7 @@ ar-placement="floor"
       );
     });
 
-    // Ошибки загрузки
+    // Ошибка загрузки
 
     model.addEventListener("error", event => {
       loading.classList.add("hidden");
