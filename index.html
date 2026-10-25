@@ -4,22 +4,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>SHARK — Подводный мир</title>
 
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "./three-shim.js"
-    }
-  }
-  </script>
-
-  <script type="module"
-    src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.1.0/dist/model-viewer-module.min.js">
-  </script>
-
-  <script type="module"
-    src="https://cdn.jsdelivr.net/npm/@google/model-viewer-effects@1.5.1/dist/model-viewer-effects.min.js">
+  <!-- Рабочее подключение 3D-просмотрщика -->
+  <script
+    type="module"
+    src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.4.0/model-viewer.min.js">
   </script>
 
   <style>
@@ -104,6 +95,7 @@
       overflow: hidden;
       border: 1px solid #32758b;
       border-radius: 24px;
+
       background:
         radial-gradient(
           ellipse at 50% 38%,
@@ -111,7 +103,9 @@
           #10435d 48%,
           #06243b 100%
         );
+
       box-shadow: 0 25px 60px #0006;
+      isolation: isolate;
     }
 
     model-viewer {
@@ -120,13 +114,14 @@
       height: 100%;
       background: transparent;
       --poster-color: transparent;
+      transition: filter 0.25s;
     }
 
     .viewer-label {
       position: absolute;
       top: 22px;
       left: 25px;
-      z-index: 2;
+      z-index: 5;
       color: #b8f1f1;
       font-size: 12px;
       letter-spacing: 2px;
@@ -213,40 +208,148 @@
       line-height: 1.6;
     }
 
-    .progress {
-      width: 50%;
-      height: 5px;
-      background: #ffffff33;
-      border-radius: 10px;
-      overflow: hidden;
-      margin: auto;
-    }
-
-    .bar {
-      height: 100%;
-      width: 0%;
-      background: var(--accent);
-    }
-
-    .error {
-      display: none;
-      position: absolute;
-      top: 55px;
-      left: 20px;
-      right: 20px;
-      z-index: 5;
-      padding: 12px;
-      border-radius: 10px;
-      background: #752e36;
-      color: white;
-      text-align: center;
-    }
-
     footer {
       text-align: center;
       padding-top: 38px;
       color: #7296a7;
       font-size: 12px;
+    }
+
+    /* Визуальная имитация пикселизации */
+
+    .pixel-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+
+      background-image:
+        linear-gradient(
+          to right,
+          #001a2933 1px,
+          transparent 1px
+        ),
+        linear-gradient(
+          to bottom,
+          #001a2933 1px,
+          transparent 1px
+        );
+
+      background-size: 12px 12px;
+      backdrop-filter: blur(3px) contrast(1.3);
+    }
+
+    .viewer-box.pixel-on .pixel-overlay {
+      opacity: 1;
+    }
+
+    .viewer-box.pixel-on model-viewer {
+      filter: contrast(1.35) saturate(1.3);
+    }
+
+    /* Цифровые искажения Glitch */
+
+    .glitch-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      opacity: 0;
+      pointer-events: none;
+
+      background:
+        repeating-linear-gradient(
+          0deg,
+          transparent 0px,
+          transparent 18px,
+          #00ffff18 19px,
+          #ff005511 20px
+        );
+    }
+
+    .viewer-box.glitch-on .glitch-overlay {
+      opacity: 1;
+      animation: glitchLines 0.7s steps(3) infinite;
+    }
+
+    .viewer-box.glitch-on model-viewer {
+      animation: glitchShift 1.8s infinite;
+    }
+
+    @keyframes glitchShift {
+      0%, 86%, 100% {
+        transform: translate(0, 0);
+        filter: none;
+      }
+
+      88% {
+        transform: translate(4px, -2px);
+        filter: hue-rotate(55deg);
+      }
+
+      90% {
+        transform: translate(-5px, 2px);
+        filter: hue-rotate(-45deg);
+      }
+
+      92% {
+        transform: translate(2px, 0);
+        filter: contrast(1.5);
+      }
+
+      94% {
+        transform: translate(0, 0);
+        filter: none;
+      }
+    }
+
+    @keyframes glitchLines {
+      0% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(8px);
+      }
+
+      100% {
+        transform: translateY(-6px);
+      }
+    }
+
+    /* Индикатор загрузки */
+
+    .loading {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      z-index: 6;
+      transform: translate(-50%, -50%);
+      padding: 14px 22px;
+      border-radius: 12px;
+      background: #06283bdd;
+      color: #d9fbff;
+      font-size: 14px;
+      pointer-events: none;
+    }
+
+    .loading.hidden {
+      display: none;
+    }
+
+    .error {
+      display: none;
+      position: absolute;
+      top: 60px;
+      left: 20px;
+      right: 20px;
+      z-index: 7;
+      padding: 12px;
+      border-radius: 10px;
+      background: #752e36;
+      color: white;
+      text-align: center;
     }
 
     @media (max-width: 700px) {
@@ -270,19 +373,28 @@
 </head>
 
 <body>
+
   <div class="page">
 
     <header>
-      <div class="logo">SHARK<span>.</span></div>
-      <div class="tag">3D EXPERIENCE</div>
+      <div class="logo">
+        SHARK<span>.</span>
+      </div>
+
+      <div class="tag">
+        3D EXPERIENCE
+      </div>
     </header>
 
     <section class="intro">
+
       <div class="tag">
         ИНТЕРАКТИВНАЯ 3D-ВИЗУАЛИЗАЦИЯ
       </div>
 
-      <h1>Глубже <span>океана</span></h1>
+      <h1>
+        Глубже <span>океана</span>
+      </h1>
 
       <p>
         Познакомьтесь с трёхмерной моделью акулы.
@@ -290,9 +402,10 @@
         применяйте визуальные эффекты и
         используйте дополненную реальность.
       </p>
+
     </section>
 
-    <section class="viewer-box">
+    <section class="viewer-box" id="viewerBox">
 
       <div class="viewer-label">
         ● 3D MODEL / SHARK
@@ -315,42 +428,26 @@
         min-field-of-view="15deg"
         max-field-of-view="60deg">
 
-        <!-- Лабораторная работа №6: эффекты -->
-        <effect-composer id="effects" render-mode="quality">
-
-          <pixelate-effect
-            id="pixelEffect"
-            granularity="7"
-            blend-mode="skip">
-          </pixelate-effect>
-
-          <glitch-effect
-            id="glitchEffect"
-            strength="0.25"
-            mode="sporadic"
-            blend-mode="skip">
-          </glitch-effect>
-
-        </effect-composer>
-
-        <div class="progress" slot="progress-bar">
-          <div class="bar" id="bar"></div>
-        </div>
-
         <button slot="ar-button" class="ar-btn">
           ◈ Посмотреть в AR
         </button>
 
       </model-viewer>
 
-      <div id="error" class="error">
-        Не удалось загрузить модель Shark.glb.
-        Проверьте имя и расположение файла.
+      <div class="pixel-overlay"></div>
+      <div class="glitch-overlay"></div>
+
+      <div class="loading" id="loading">
+        Загрузка 3D-модели...
+      </div>
+
+      <div class="error" id="error">
+        Ошибка загрузки Shark.glb.
+        Проверьте расположение файла.
       </div>
 
     </section>
 
-    <!-- Управление моделью -->
     <div class="controls">
 
       <button id="rotateBtn">
@@ -396,9 +493,8 @@
       <div class="info-card">
         <strong>02 / Визуальные эффекты</strong>
         <p>
-          Включайте пикселизацию и цифровые
-          искажения Glitch для изменения
-          изображения в реальном времени.
+          Включайте стилизованную пикселизацию
+          и цифровые искажения Glitch.
         </p>
       </div>
 
@@ -422,23 +518,23 @@
 
   <script>
     const model = document.getElementById("shark");
+    const viewerBox = document.getElementById("viewerBox");
+
     const rotateBtn = document.getElementById("rotateBtn");
     const pixelBtn = document.getElementById("pixelBtn");
     const glitchBtn = document.getElementById("glitchBtn");
     const animBtn = document.getElementById("animBtn");
 
-    const pixelEffect = document.getElementById("pixelEffect");
-    const glitchEffect = document.getElementById("glitchEffect");
-    const bar = document.getElementById("bar");
+    const loading = document.getElementById("loading");
+    const errorBox = document.getElementById("error");
 
     const initialOrbit = "-45.16deg 76.24deg 1162m";
     const initialFov = "30deg";
 
-    let pixelOn = false;
-    let glitchOn = false;
     let animationOn = false;
 
-    // Автоматическое вращение
+    // Вращение модели
+
     rotateBtn.addEventListener("click", () => {
       model.autoRotate = !model.autoRotate;
 
@@ -448,6 +544,7 @@
     });
 
     // Приближение и отдаление
+
     function zoom(factor) {
       const orbit = model.getCameraOrbit();
 
@@ -461,12 +558,17 @@
     }
 
     document.getElementById("zoomIn")
-      .addEventListener("click", () => zoom(0.8));
+      .addEventListener("click", () => {
+        zoom(0.8);
+      });
 
     document.getElementById("zoomOut")
-      .addEventListener("click", () => zoom(1.25));
+      .addEventListener("click", () => {
+        zoom(1.25);
+      });
 
     // Сброс камеры
+
     document.getElementById("resetBtn")
       .addEventListener("click", () => {
         model.cameraOrbit = initialOrbit;
@@ -478,60 +580,64 @@
           "⏸ Остановить вращение";
       });
 
-    // Пикселизация
+    // Стилизованная пикселизация
+
     pixelBtn.addEventListener("click", () => {
-      pixelOn = !pixelOn;
+      const enabled =
+        viewerBox.classList.toggle("pixel-on");
 
-      pixelEffect.setAttribute(
-        "blend-mode",
-        pixelOn ? "default" : "skip"
-      );
+      pixelBtn.classList.toggle("active", enabled);
 
-      pixelBtn.textContent = pixelOn
+      pixelBtn.textContent = enabled
         ? "▦ Пикселизация: вкл."
         : "▦ Пикселизация: выкл.";
-
-      pixelBtn.classList.toggle("active", pixelOn);
     });
 
-    // Эффект Glitch
+    // Glitch
+
     glitchBtn.addEventListener("click", () => {
-      glitchOn = !glitchOn;
+      const enabled =
+        viewerBox.classList.toggle("glitch-on");
 
-      glitchEffect.setAttribute(
-        "blend-mode",
-        glitchOn ? "default" : "skip"
-      );
+      glitchBtn.classList.toggle("active", enabled);
 
-      glitchBtn.textContent = glitchOn
+      glitchBtn.textContent = enabled
         ? "⚡ Glitch: вкл."
         : "⚡ Glitch: выкл.";
-
-      glitchBtn.classList.toggle("active", glitchOn);
     });
 
-    // Проверка встроенных анимаций GLB
+    // Загрузка модели
+
     model.addEventListener("load", () => {
-      const animations = model.availableAnimations || [];
+      loading.classList.add("hidden");
+      errorBox.style.display = "none";
+
+      const animations =
+        model.availableAnimations || [];
+
+      console.log("Модель успешно загружена");
+      console.log("Анимации:", animations);
 
       if (animations.length > 0) {
         model.animationName = animations[0];
         model.pause();
 
         animBtn.disabled = false;
-        animBtn.textContent = "▶ Запустить анимацию";
+        animBtn.textContent =
+          "▶ Запустить анимацию";
       } else {
         animBtn.disabled = true;
-        animBtn.textContent = "Анимация отсутствует";
+        animBtn.textContent =
+          "Анимация отсутствует";
       }
-
-      console.log("Модель загружена");
-      console.log("Доступные анимации:", animations);
     });
 
-    // Воспроизведение анимации
+    // Управление анимацией GLB
+
     animBtn.addEventListener("click", () => {
-      if (!model.availableAnimations?.length) return;
+      if (!model.availableAnimations?.length) {
+        return;
+      }
 
       animationOn = !animationOn;
 
@@ -545,22 +651,24 @@
         ? "⏸ Остановить анимацию"
         : "▶ Запустить анимацию";
 
-      animBtn.classList.toggle("active", animationOn);
+      animBtn.classList.toggle(
+        "active",
+        animationOn
+      );
     });
 
-    // Индикатор загрузки
-    model.addEventListener("progress", event => {
-      bar.style.width =
-        Math.round(event.detail.totalProgress * 100) + "%";
-    });
+    // Ошибка загрузки
 
-    // Обработка ошибок
     model.addEventListener("error", event => {
-      console.error("Ошибка модели:", event.detail);
+      loading.classList.add("hidden");
+      errorBox.style.display = "block";
 
-      document.getElementById("error")
-        .style.display = "block";
+      console.error(
+        "Ошибка загрузки модели:",
+        event.detail
+      );
     });
+
   </script>
 
 </body>
