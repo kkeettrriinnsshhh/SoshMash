@@ -7,7 +7,6 @@
 
   <title>SHARK — Подводный мир</title>
 
-  <!-- Рабочее подключение 3D-просмотрщика -->
   <script
     type="module"
     src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.4.0/model-viewer.min.js">
@@ -95,7 +94,6 @@
       overflow: hidden;
       border: 1px solid #32758b;
       border-radius: 24px;
-
       background:
         radial-gradient(
           ellipse at 50% 38%,
@@ -103,7 +101,6 @@
           #10435d 48%,
           #06243b 100%
         );
-
       box-shadow: 0 25px 60px #0006;
       isolation: isolate;
     }
@@ -114,7 +111,6 @@
       height: 100%;
       background: transparent;
       --poster-color: transparent;
-      transition: filter 0.25s;
     }
 
     .viewer-label {
@@ -163,7 +159,6 @@
       border-radius: 11px;
       cursor: pointer;
       font-size: 14px;
-      transition: background 0.2s;
     }
 
     .controls button:hover {
@@ -215,110 +210,25 @@
       font-size: 12px;
     }
 
-    /* Визуальная имитация пикселизации */
+    /* Canvas для обработки изображения */
 
-    .pixel-overlay {
+    .effects-canvas {
       position: absolute;
       inset: 0;
+      width: 100%;
+      height: 100%;
       z-index: 3;
       pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.2s;
-
-      background-image:
-        linear-gradient(
-          to right,
-          #001a2933 1px,
-          transparent 1px
-        ),
-        linear-gradient(
-          to bottom,
-          #001a2933 1px,
-          transparent 1px
-        );
-
-      background-size: 12px 12px;
-      backdrop-filter: blur(3px) contrast(1.3);
+      display: none;
     }
 
-    .viewer-box.pixel-on .pixel-overlay {
-      opacity: 1;
+    .viewer-box.effects-on .effects-canvas {
+      display: block;
     }
 
-    .viewer-box.pixel-on model-viewer {
-      filter: contrast(1.35) saturate(1.3);
+    .viewer-box.effects-on model-viewer {
+      opacity: 0.001;
     }
-
-    /* Цифровые искажения Glitch */
-
-    .glitch-overlay {
-      position: absolute;
-      inset: 0;
-      z-index: 4;
-      opacity: 0;
-      pointer-events: none;
-
-      background:
-        repeating-linear-gradient(
-          0deg,
-          transparent 0px,
-          transparent 18px,
-          #00ffff18 19px,
-          #ff005511 20px
-        );
-    }
-
-    .viewer-box.glitch-on .glitch-overlay {
-      opacity: 1;
-      animation: glitchLines 0.7s steps(3) infinite;
-    }
-
-    .viewer-box.glitch-on model-viewer {
-      animation: glitchShift 1.8s infinite;
-    }
-
-    @keyframes glitchShift {
-      0%, 86%, 100% {
-        transform: translate(0, 0);
-        filter: none;
-      }
-
-      88% {
-        transform: translate(4px, -2px);
-        filter: hue-rotate(55deg);
-      }
-
-      90% {
-        transform: translate(-5px, 2px);
-        filter: hue-rotate(-45deg);
-      }
-
-      92% {
-        transform: translate(2px, 0);
-        filter: contrast(1.5);
-      }
-
-      94% {
-        transform: translate(0, 0);
-        filter: none;
-      }
-    }
-
-    @keyframes glitchLines {
-      0% {
-        transform: translateY(0);
-      }
-
-      50% {
-        transform: translateY(8px);
-      }
-
-      100% {
-        transform: translateY(-6px);
-      }
-    }
-
-    /* Индикатор загрузки */
 
     .loading {
       position: absolute;
@@ -387,7 +297,6 @@
     </header>
 
     <section class="intro">
-
       <div class="tag">
         ИНТЕРАКТИВНАЯ 3D-ВИЗУАЛИЗАЦИЯ
       </div>
@@ -402,7 +311,6 @@
         применяйте визуальные эффекты и
         используйте дополненную реальность.
       </p>
-
     </section>
 
     <section class="viewer-box" id="viewerBox">
@@ -434,8 +342,11 @@
 
       </model-viewer>
 
-      <div class="pixel-overlay"></div>
-      <div class="glitch-overlay"></div>
+      <canvas
+        id="effectsCanvas"
+        class="effects-canvas"
+        aria-hidden="true">
+      </canvas>
 
       <div class="loading" id="loading">
         Загрузка 3D-модели...
@@ -493,7 +404,7 @@
       <div class="info-card">
         <strong>02 / Визуальные эффекты</strong>
         <p>
-          Включайте стилизованную пикселизацию
+          Включайте пикселизацию изображения
           и цифровые искажения Glitch.
         </p>
       </div>
@@ -533,7 +444,7 @@
 
     let animationOn = false;
 
-    // Вращение модели
+    // Вращение
 
     rotateBtn.addEventListener("click", () => {
       model.autoRotate = !model.autoRotate;
@@ -543,7 +454,7 @@
         : "▶ Включить вращение";
     });
 
-    // Приближение и отдаление
+    // Масштабирование
 
     function zoom(factor) {
       const orbit = model.getCameraOrbit();
@@ -580,43 +491,281 @@
           "⏸ Остановить вращение";
       });
 
-    // Стилизованная пикселизация
+    // Canvas для эффектов
 
-    pixelBtn.addEventListener("click", () => {
-      const enabled =
-        viewerBox.classList.toggle("pixel-on");
+    const fxCanvas =
+      document.getElementById("effectsCanvas");
 
-      pixelBtn.classList.toggle("active", enabled);
+    const fx = fxCanvas.getContext("2d", {
+      alpha: true
+    });
 
-      pixelBtn.textContent = enabled
+    const smallCanvas =
+      document.createElement("canvas");
+
+    const small = smallCanvas.getContext("2d");
+
+    let pixelOn = false;
+    let glitchOn = false;
+    let processing = false;
+    let lastCapture = 0;
+    let frameNumber = 0;
+    let loaded = false;
+
+    function updateEffectButtons() {
+      viewerBox.classList.toggle(
+        "effects-on",
+        pixelOn || glitchOn
+      );
+
+      pixelBtn.classList.toggle(
+        "active",
+        pixelOn
+      );
+
+      glitchBtn.classList.toggle(
+        "active",
+        glitchOn
+      );
+
+      pixelBtn.textContent = pixelOn
         ? "▦ Пикселизация: вкл."
         : "▦ Пикселизация: выкл.";
-    });
 
-    // Glitch
-
-    glitchBtn.addEventListener("click", () => {
-      const enabled =
-        viewerBox.classList.toggle("glitch-on");
-
-      glitchBtn.classList.toggle("active", enabled);
-
-      glitchBtn.textContent = enabled
+      glitchBtn.textContent = glitchOn
         ? "⚡ Glitch: вкл."
         : "⚡ Glitch: выкл.";
+
+      if (!(pixelOn || glitchOn)) {
+        fx.clearRect(
+          0,
+          0,
+          fxCanvas.width,
+          fxCanvas.height
+        );
+      }
+    }
+
+    // Переключение пикселизации
+
+    pixelBtn.addEventListener("click", () => {
+      pixelOn = !pixelOn;
+      updateEffectButtons();
     });
+
+    // Переключение Glitch
+
+    glitchBtn.addEventListener("click", () => {
+      glitchOn = !glitchOn;
+      updateEffectButtons();
+    });
+
+    function resizeEffects() {
+      const width = Math.max(
+        1,
+        Math.round(model.clientWidth)
+      );
+
+      const height = Math.max(
+        1,
+        Math.round(model.clientHeight)
+      );
+
+      if (
+        fxCanvas.width !== width ||
+        fxCanvas.height !== height
+      ) {
+        fxCanvas.width = width;
+        fxCanvas.height = height;
+      }
+    }
+
+    // Обработка изображения
+
+    function renderEffects(image) {
+      resizeEffects();
+
+      const w = fxCanvas.width;
+      const h = fxCanvas.height;
+
+      fx.clearRect(0, 0, w, h);
+      fx.imageSmoothingEnabled = true;
+
+      if (pixelOn) {
+        // Уменьшаем изображение,
+        // затем увеличиваем без сглаживания.
+
+        const block = 12;
+
+        smallCanvas.width = Math.max(
+          1,
+          Math.ceil(w / block)
+        );
+
+        smallCanvas.height = Math.max(
+          1,
+          Math.ceil(h / block)
+        );
+
+        small.clearRect(
+          0,
+          0,
+          smallCanvas.width,
+          smallCanvas.height
+        );
+
+        small.drawImage(
+          image,
+          0,
+          0,
+          smallCanvas.width,
+          smallCanvas.height
+        );
+
+        fx.imageSmoothingEnabled = false;
+
+        fx.drawImage(
+          smallCanvas,
+          0,
+          0,
+          w,
+          h
+        );
+      } else {
+        fx.drawImage(image, 0, 0, w, h);
+      }
+
+      if (glitchOn) {
+        // Копируем текущий кадр.
+
+        const snapshot =
+          document.createElement("canvas");
+
+        snapshot.width = w;
+        snapshot.height = h;
+
+        snapshot
+          .getContext("2d")
+          .drawImage(fxCanvas, 0, 0);
+
+        // Сдвигаем случайные горизонтальные полосы.
+
+        const stripes = 7;
+
+        for (let i = 0; i < stripes; i++) {
+          const y = Math.floor(
+            Math.random() * h
+          );
+
+          const sh = Math.min(
+            h - y,
+            3 + Math.floor(Math.random() * 26)
+          );
+
+          const shift = Math.floor(
+            (Math.random() - 0.5) * 85
+          );
+
+          fx.clearRect(0, y, w, sh);
+
+          fx.drawImage(
+            snapshot,
+            0, y, w, sh,
+            shift, y, w, sh
+          );
+
+          if (i % 2 === 0) {
+            fx.fillStyle = i % 4 === 0
+              ? "#00ffff22"
+              : "#ff005522";
+
+            fx.fillRect(0, y, w, sh);
+          }
+        }
+
+        if (frameNumber % 5 === 0) {
+          fx.fillStyle = "#74faff20";
+
+          fx.fillRect(
+            0,
+            Math.floor(Math.random() * h),
+            w,
+            2
+          );
+        }
+      }
+    }
+
+    // Получение кадров модели
+
+    async function effectLoop(timestamp) {
+      requestAnimationFrame(effectLoop);
+
+      if (
+        !loaded ||
+        !(pixelOn || glitchOn) ||
+        processing ||
+        timestamp - lastCapture < 100
+      ) {
+        return;
+      }
+
+      processing = true;
+      lastCapture = timestamp;
+
+      try {
+        const url = model.toDataURL("image/png");
+
+        const img = new Image();
+        img.src = url;
+
+        await img.decode();
+
+        if (pixelOn || glitchOn) {
+          frameNumber++;
+          renderEffects(img);
+        }
+      } catch (err) {
+        console.error(
+          "Ошибка обработки кадра:",
+          err
+        );
+
+        pixelOn = false;
+        glitchOn = false;
+        updateEffectButtons();
+
+        errorBox.textContent =
+          "Эффекты недоступны в этом браузере. " +
+          "Модель продолжает работать.";
+
+        errorBox.style.display = "block";
+      } finally {
+        processing = false;
+      }
+    }
+
+    requestAnimationFrame(effectLoop);
 
     // Загрузка модели
 
     model.addEventListener("load", () => {
+      loaded = true;
+
       loading.classList.add("hidden");
       errorBox.style.display = "none";
 
       const animations =
         model.availableAnimations || [];
 
-      console.log("Модель успешно загружена");
-      console.log("Анимации:", animations);
+      console.log(
+        "Модель успешно загружена"
+      );
+
+      console.log(
+        "Анимации:",
+        animations
+      );
 
       if (animations.length > 0) {
         model.animationName = animations[0];
@@ -632,7 +781,7 @@
       }
     });
 
-    // Управление анимацией GLB
+    // Управление встроенной анимацией
 
     animBtn.addEventListener("click", () => {
       if (!model.availableAnimations?.length) {
@@ -657,7 +806,7 @@
       );
     });
 
-    // Ошибка загрузки
+    // Ошибки загрузки
 
     model.addEventListener("error", event => {
       loading.classList.add("hidden");
