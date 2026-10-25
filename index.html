@@ -1,27 +1,370 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <title>&lt;model-viewer&gt; template</title>
-    <meta charset="utf-8">
-    <meta name="description" content="&lt;model-viewer&gt; template">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link type="text/css" href="./styles.css" rel="stylesheet"/>
-  </head>
-  <body>
-    <!-- <model-viewer> HTML element -->
-    <model-viewer src="Shark.glb" ar ar-modes="webxr scene-viewer quick-look" camera-controls tone-mapping="neutral" poster="poster.webp" shadow-intensity="1.14" autoplay camera-orbit="-45.16deg 76.24deg 1162m" field-of-view="30deg" auto-rotate exposure="1.32" shadow-softness="1">
-      <div class="progress-bar hide" slot="progress-bar">
-          <div class="update-bar"></div>
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SHARK — Подводный мир</title>
+
+  <script type="module"
+    src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.4.0/model-viewer.min.js">
+  </script>
+
+  <style>
+    :root {
+      --bg: #061b2c;
+      --surface: #0d3045;
+      --accent: #66e2e1;
+      --text: #f1fbff;
+      --muted: #a3c3d0;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+    }
+
+    .page {
+      max-width: 1250px;
+      margin: auto;
+      padding: 30px 24px 45px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      border-bottom: 1px solid #ffffff25;
+      padding-bottom: 20px;
+    }
+
+    .logo {
+      font-weight: 900;
+      font-size: 23px;
+      letter-spacing: 5px;
+    }
+
+    .tag {
+      color: var(--accent);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .intro {
+      text-align: center;
+      padding: 35px 0 24px;
+    }
+
+    h1 {
+      margin: 12px 0;
+      font-size: clamp(42px, 7vw, 76px);
+      letter-spacing: -2px;
+      line-height: 1.05;
+    }
+
+    h1 span { color: var(--accent); }
+
+    .intro p {
+      max-width: 540px;
+      margin: 16px auto 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .viewer-box {
+      position: relative;
+      height: 570px;
+      overflow: hidden;
+      border: 1px solid #32758b;
+      border-radius: 24px;
+      background:
+        radial-gradient(ellipse at 50% 38%,
+          #257b91 0%,
+          #10435d 48%,
+          #06243b 100%);
+      box-shadow: 0 25px 60px #0006;
+    }
+
+    model-viewer {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      --poster-color: transparent;
+    }
+
+    .viewer-label {
+      position: absolute;
+      top: 22px;
+      left: 25px;
+      z-index: 2;
+      color: #b8f1f1;
+      font-size: 12px;
+      letter-spacing: 2px;
+      pointer-events: none;
+    }
+
+    .ar-btn {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 1px solid #8ceeed;
+      border-radius: 12px;
+      padding: 13px 23px;
+      background: #07384e;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .ar-btn:hover { background: #13657b; }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .controls button {
+      background: var(--surface);
+      border: 1px solid #357489;
+      color: var(--text);
+      padding: 13px 19px;
+      border-radius: 11px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .controls button:hover {
+      background: #19536a;
+    }
+
+    .info {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-top: 32px;
+    }
+
+    .info-card {
+      padding: 23px;
+      border: 1px solid #ffffff20;
+      border-radius: 16px;
+      background: #0c2b40;
+    }
+
+    .info-card strong {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--accent);
+      font-size: 15px;
+    }
+
+    .info-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .progress {
+      width: 50%;
+      height: 5px;
+      background: #ffffff33;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: auto;
+    }
+
+    .bar {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+    }
+
+    .error {
+      display: none;
+      position: absolute;
+      top: 55px;
+      left: 20px;
+      right: 20px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #752e36;
+      color: white;
+      text-align: center;
+    }
+
+    footer {
+      text-align: center;
+      padding-top: 38px;
+      color: #7296a7;
+      font-size: 12px;
+    }
+
+    @media (max-width: 700px) {
+      .page { padding: 20px 12px; }
+      .viewer-box { height: 470px; }
+      .info { grid-template-columns: 1fr; }
+      .controls button { flex: 1 1 40%; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+
+    <header>
+      <div class="logo">SHARK<span style="color:#66e2e1">.</span></div>
+      <div class="tag">3D EXPERIENCE</div>
+    </header>
+
+    <section class="intro">
+      <div class="tag">ИНТЕРАКТИВНАЯ 3D-ВИЗУАЛИЗАЦИЯ</div>
+      <h1>Глубже <span>океана</span></h1>
+      <p>
+        Познакомьтесь с трёхмерной моделью акулы.
+        Вращайте её, изучайте с разных сторон и
+        используйте дополненную реальность.
+      </p>
+    </section>
+
+    <section class="viewer-box">
+      <div class="viewer-label">● 3D MODEL / SHARK</div>
+
+      <model-viewer
+        id="shark"
+        src="./Shark.glb"
+        alt="Интерактивная трёхмерная модель акулы"
+        poster="./poster.webp"
+        camera-controls
+        auto-rotate
+        autoplay
+        ar
+        ar-modes="webxr scene-viewer quick-look"
+        tone-mapping="neutral"
+        exposure="1.32"
+        shadow-intensity="1.14"
+        shadow-softness="1"
+        camera-orbit="-45.16deg 76.24deg 1162m"
+        field-of-view="30deg"
+        min-field-of-view="15deg"
+        max-field-of-view="60deg">
+
+        <div class="progress" slot="progress-bar">
+          <div class="bar" id="bar"></div>
+        </div>
+
+        <button slot="ar-button" class="ar-btn">
+          ◈ Посмотреть в AR
+        </button>
+
+      </model-viewer>
+
+      <div id="error" class="error">
+        Не удалось загрузить модель Shark.glb.
+        Проверьте имя и расположение файла.
       </div>
-      <button slot="ar-button" id="ar-button">
-          View in your space
-      </button>
-      <div id="ar-prompt">
-          <img src="ar_hand_prompt.png">
+    </section>
+
+    <div class="controls">
+      <button id="rotateBtn">⏸ Остановить вращение</button>
+      <button id="zoomIn">＋ Приблизить</button>
+      <button id="zoomOut">－ Отдалить</button>
+      <button id="resetBtn">↺ Сбросить вид</button>
+    </div>
+
+    <section class="info">
+      <div class="info-card">
+        <strong>01 / Вращение</strong>
+        <p>
+          Зажмите левую кнопку мыши и перемещайте
+          курсор, чтобы рассмотреть модель.
+        </p>
       </div>
-    </model-viewer>  
-    <script src="script.js"></script>
-    <!-- Loads <model-viewer> for browsers: -->
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.4.0/model-viewer.min.js"></script>
-  </body>
+
+      <div class="info-card">
+        <strong>02 / Масштабирование</strong>
+        <p>
+          Используйте колесо мыши или кнопки
+          управления для изменения масштаба.
+        </p>
+      </div>
+
+      <div class="info-card">
+        <strong>03 / Дополненная реальность</strong>
+        <p>
+          На совместимом смартфоне можно
+          разместить 3D-модель в пространстве.
+        </p>
+      </div>
+    </section>
+
+    <footer>
+      Лабораторная работа №5 • Интерактивная 3D-модель
+    </footer>
+  </div>
+
+  <script>
+    const model = document.getElementById("shark");
+    const rotateBtn = document.getElementById("rotateBtn");
+    const bar = document.getElementById("bar");
+
+    const initialOrbit = "-45.16deg 76.24deg 1162m";
+    const initialFov = "30deg";
+
+    rotateBtn.addEventListener("click", () => {
+      model.autoRotate = !model.autoRotate;
+      rotateBtn.textContent = model.autoRotate
+        ? "⏸ Остановить вращение"
+        : "▶ Включить вращение";
+    });
+
+    function zoom(factor) {
+      const orbit = model.getCameraOrbit();
+      const newRadius = Math.max(
+        0.01,
+        orbit.radius * factor
+      );
+
+      model.cameraOrbit =
+        `${orbit.theta}rad ${orbit.phi}rad ${newRadius}m`;
+    }
+
+    document.getElementById("zoomIn")
+      .addEventListener("click", () => zoom(0.8));
+
+    document.getElementById("zoomOut")
+      .addEventListener("click", () => zoom(1.25));
+
+    document.getElementById("resetBtn")
+      .addEventListener("click", () => {
+        model.cameraOrbit = initialOrbit;
+        model.fieldOfView = initialFov;
+        model.autoRotate = true;
+        model.jumpCameraToGoal();
+        rotateBtn.textContent = "⏸ Остановить вращение";
+      });
+
+    model.addEventListener("progress", event => {
+      bar.style.width =
+        Math.round(event.detail.totalProgress * 100) + "%";
+    });
+
+    model.addEventListener("error", () => {
+      document.getElementById("error").style.display = "block";
+    });
+  </script>
+</body>
 </html>
